@@ -1,0 +1,55 @@
+# encoding: UTF-8
+
+FROM <%= ENV.fetch('FROM') %>
+MAINTAINER The Blue Beluga <admin@bluebeluga.io>
+
+LABEL name="zookeeper"
+LABEL description="Alpine Linux Base with Zookeeper"
+LABEL version="<%= ENV.fetch('ZK_VERSION') %>"
+LABEL git_revision="<%= ENV.fetch('GIT_REVISION') %>"
+
+ENV ZK_VERSION <%= ENV.fetch('ZK_VERSION') %>
+ENV ZK_SHA256 <%= ENV.fetch('ZK_SHA256') %>
+ENV ZK_HOME <%= ENV.fetch('ZK_HOME') %>
+ENV ZK_USER <%= ENV.fetch('ZK_USER') %>
+ENV ZK_GROUP <%= ENV.fetch('ZK_GROUP') %>
+
+RUN apk add --no-cache --virtual=build-dependencies curl jq gnupg && \
+    eval $(gpg-agent --daemon) && \
+    MIRROR=`curl -sS https://www.apache.org/dyn/closer.cgi\?as_json\=1 | jq -r '.preferred'` && \
+    curl -sSLO "${MIRROR}/zookeeper/zookeeper-${ZK_VERSION}/zookeeper-${ZK_VERSION}.tar.gz" && \
+    curl -sSLO "http://www.apache.org/dist/zookeeper/zookeeper-${ZK_VERSION}/zookeeper-${ZK_VERSION}.tar.gz.asc" && \
+    curl -sSL  https://dist.apache.org/repos/dist/release/zookeeper/KEYS | gpg -v --import - && \
+    gpg -v --verify "zookeeper-${ZK_VERSION}.tar.gz.asc" && \
+    echo "${ZK_SHA256}  zookeeper-${ZK_VERSION}.tar.gz" | sha256sum -c - && \
+    tar -xzf "zookeeper-${ZK_VERSION}.tar.gz" && \
+    rm "zookeeper-${ZK_VERSION}.tar.gz" \
+       "zookeeper-${ZK_VERSION}.tar.gz.asc" && \
+    mv "zookeeper-${ZK_VERSION}" "${ZK_HOME}" && \
+    apk del build-dependencies && \
+    rm -rf /var/cache/apk/*
+
+WORKDIR "${ZK_HOME}"
+RUN rm -rf contrib/fatjar dist-maven docs src bin/*.cmd && \
+    mkdir data txns logs && \
+    sed -i -r -e "s|(\\$\\{zookeeper.log.dir\\})|${ZK_HOME}/logs|g" \
+              -e "s|(\\$\\{zookeeper.tracelog.dir\\})|${ZK_HOME}/logs|g" \
+              -e "s|(\\$\\{zookeeper.log.file\\})|zookeeper.log|g" \
+              -e "s|(\\$\\{zookeeper.tracelog.file\\})|zookeeper_trace.log|g" \
+              -e "s|(\[myid\:\%X\{myid\}\]\s?)||g" \
+              -e 's|#(log4j.appender.ROLLINGFILE.MaxBackupIndex.*)|\1|g' \
+              conf/log4j.properties
+
+COPY files/zoo.cfg "${ZK_HOME}/conf/zoo.cfg"
+
+RUN addgroup -S "${ZK_GROUP}" && \
+    adduser "${ZK_USER}" -D -S -h "${ZK_HOME}" -G "${ZK_GROUP}" -g 'Zookeeper User' && \
+    chown -R "${ZK_USER}:${ZK_GROUP}" "${ZK_HOME}"
+
+USER "${ZK_USER}"
+EXPOSE 2181 2888 3888
+VOLUME ["${ZK_HOME}/data","${ZK_HOME}/txns","${ZK_HOME}/conf"]
+
+COPY files/entrypoint.sh /
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["start"]
