@@ -3,16 +3,17 @@
 FROM <%= ENV.fetch('FROM') %>
 MAINTAINER The Blue Beluga <admin@bluebeluga.io>
 
-LABEL name="zookeeper"
-LABEL description="Alpine Linux Base with Zookeeper"
-LABEL version="<%= ENV.fetch('ZK_VERSION') %>"
-LABEL git_revision="<%= ENV.fetch('GIT_REVISION') %>"
+LABEL vendor="The Blue Beluga Company"
+LABEL io.bluebeluga.zookeeper.description="Zookeeper"
+LABEL io.bluebeluga.zookeeper.version="<%= ENV.fetch('TAG') %>"
+LABEL io.bluebeluga.zookeeper.git-revision="<%= ENV.fetch('GIT_REVISION') %>"
+LABEL io.bluebeluga.zookeeper.release-date="<%= Time.now.strftime('%B %d, %Y %H:%M') %>"
 
-ENV ZK_VERSION <%= ENV.fetch('ZK_VERSION') %>
-ENV ZK_SHA256 <%= ENV.fetch('ZK_SHA256') %>
-ENV ZK_HOME <%= ENV.fetch('ZK_HOME') %>
-ENV ZK_USER <%= ENV.fetch('ZK_USER') %>
-ENV ZK_GROUP <%= ENV.fetch('ZK_GROUP') %>
+ENV ZK_VERSION=<%= ENV.fetch('ZK_VERSION') %>
+ENV ZK_SHA256=<%= ENV.fetch('ZK_SHA256') %>
+ENV ZK_HOME=<%= ENV.fetch('ZK_HOME') %>
+ENV ZK_USER=<%= ENV.fetch('ZK_USER') %>
+ENV ZK_GROUP=<%= ENV.fetch('ZK_GROUP') %>
 
 RUN apk add --no-cache --virtual=build-dependencies curl jq gnupg && \
     eval $(gpg-agent --daemon) && \
